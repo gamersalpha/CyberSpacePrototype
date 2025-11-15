@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Cyberpunk Network 3D</title>
+  <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+      background: #0a0d12;
+      color: #d7e1ff;
+      font-family: system-ui, sans-serif;
+      overflow: hidden;
+    }
+
+    /* Menu principal */
+    #menu {
+      position: fixed;
+      top: 12px;
+      left: 12px;
+      display: flex;
+      gap: 8px;
+      z-index: 60;
+      flex-wrap: wrap;
+      max-width: 600px;
+    }
+    .chip {
+      padding: 8px 10px;
+      border-radius: 10px;
+      border: 1px solid #2a3242;
+      background: rgba(10,13,18,.7);
+      color: #d7e1ff;
+      cursor: pointer;
+      user-select: none;
+      font-size: 13px;
+    }
+    .chip:hover {
+      background: rgba(26,32,44,.8);
+    }
+    .chip.active {
+      background: linear-gradient(135deg, #1f2b44, #122034);
+      border-color: #3a8bd6;
+    }
+
+    /* Info panel */
+    #info {
+      position: fixed;
+      top: 70px;
+      left: 12px;
+      background: rgba(10,13,18,.7);
+      padding: 10px 12px;
+      border: 1px solid #2a3242;
+      border-radius: 10px;
+      backdrop-filter: blur(6px);
+      z-index: 59;
+      font-size: 13px;
+    }
+    #hover {
+      font-size: 12px;
+      opacity: .9;
+      margin-top: 8px;
+    }
+
+    /* Mini-carte */
+    #miniPanel {
+      position: fixed;
+      top: 150px;
+      left: 12px;
+      width: 360px;
+      height: 260px;
+      z-index: 50;
+      display: none;
+    }
+    #miniChrome {
+      position: absolute;
+      inset: 0;
+      border-radius: 12px;
+      background: rgba(8,11,16,0.85);
+      border: 1px solid #2a3242;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+      backdrop-filter: blur(6px);
+    }
+    #miniHeader {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 34px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 0 10px;
+      border-bottom: 1px solid #223046;
+      cursor: move;
+    }
+    #miniTitle {
+      font-size: 12px;
+      color: #9ad0ff;
+      letter-spacing: .3px;
+    }
+    #miniClose {
+      margin-left: auto;
+      font-size: 16px;
+      opacity: .8;
+      cursor: pointer;
+    }
+    #miniClose:hover {
+      opacity: 1;
+      color: #ff6b6b;
+    }
+    #miniCanvas {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 34px;
+      bottom: 0;
+      border-radius: 0 0 12px 12px;
+      background: #0a0d12;
+      cursor: pointer;
+    }
+
+    /* Panneau détails */
+    #details {
+      position: fixed;
+      top: 150px;
+      right: 12px;
+      width: 320px;
+      background: rgba(8,11,16,0.85);
+      border: 1px solid #2a3242;
+      border-radius: 12px;
+      padding: 16px;
+      z-index: 50;
+      backdrop-filter: blur(6px);
+      display: none;
+    }
+    #details h3 {
+      margin: 0 0 8px 0;
+      color: #9ad0ff;
+      font-size: 16px;
+    }
+    #details p {
+      margin: 4px 0;
+      font-size: 13px;
+      opacity: 0.9;
+    }
+    .tag {
+      display: inline-block;
+      padding: 3px 8px;
+      margin: 2px;
+      background: rgba(58,139,214,0.2);
+      border: 1px solid rgba(58,139,214,0.4);
+      border-radius: 4px;
+      font-size: 11px;
+      color: #9ad0ff;
+    }
+    #d-osi {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 4px;
+      margin: 12px 0;
+    }
+    .layer {
+      font-size: 11px;
+      opacity: 0.8;
+      padding: 4px 0;
+    }
+    .bar {
+      height: 20px;
+      background: rgba(14,23,38,0.5);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .fill {
+      height: 100%;
+      transition: all 0.3s;
+    }
+  </style>
+</head>
+<body>
+  <!-- Menu principal -->
+  <div id="menu">
+    <div class="chip" id="btnMap">Carte</div>
+    <div class="chip" id="btnFit">Recentrer</div>
+    <div class="chip" id="btnToggleLabels">Masquer labels</div>
+    <div class="chip" id="btnSpread">Écarter</div>
+    <div class="chip" id="btnLoadXml">Charger scan nmap</div>
+    <div class="chip" id="btnReplace">Mode remplacement</div>
+  </div>
+
+  <!-- Info panel -->
+  <div id="info">
+    <strong>Cyberpunk Network</strong><br>
+    Souris: pivoter/zoomer • Clic: sélectionner • Mini-carte: cliquer pour zoomer
+    <div id="hover"></div>
+  </div>
+
+  <!-- Mini-carte -->
+  <div id="miniPanel">
+    <div id="miniChrome"></div>
+    <div id="miniHeader">
+      <span id="miniTitle">Carte du réseau (2D)</span>
+      <span id="miniClose">✕</span>
+    </div>
+    <canvas id="miniCanvas"></canvas>
+  </div>
+
+  <!-- Panneau détails -->
+  <div id="details">
+    <h3 id="d-title">Node</h3>
+    <p id="d-sub"></p>
+    <div id="d-osi"></div>
+    <div id="d-protos"></div>
+  </div>
+
+  <!-- Import map pour les modules -->
+  <script async src="https://unpkg.com/es-module-shims@1.6.3/dist/es-module-shims.js"></script>
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.162.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.162.0/examples/jsm/"
+    }
+  }
+  </script>
+
+  <!-- Modules JavaScript -->
+  <script type="module" src="../src/js/core.js"></script>
+  <script type="module" src="../src/js/details.js"></script>
+  <script type="module" src="../src/js/minimap.js"></script>
+  <script type="module" src="../src/js/nmap.js"></script>
+  <script type="module" src="../src/js/ui.js"></script>
+</body>
+</html>
