@@ -28,23 +28,36 @@
 
 ### What is CyberSpacePrototype?
 
-CyberSpacePrototype is [**TO BE DOCUMENTED**: Add project description, goals, and key features here].
+CyberSpacePrototype is a **3D interactive network visualization tool** with a cyberpunk aesthetic. It allows users to visualize and explore network topologies in an immersive 3D environment, import Nmap scan results, and analyze network nodes with OSI layer breakdowns.
+
+**Key Features**:
+- 3D visualization of network topology using Three.js
+- Interactive zone-based network organization (Core/DMZ, LAN, IoT, Guest)
+- Nmap XML import for automatic network discovery
+- OSI model analysis for detected services
+- 2D minimap for quick navigation
+- Cyberpunk-inspired visual design
 
 ### Technology Stack
 
-**TO BE DOCUMENTED** - As the project evolves, document:
-- **Frontend**: [Framework/library used]
-- **Backend**: [Language/framework]
-- **Database**: [Database system]
-- **Infrastructure**: [Deployment platform, containerization]
-- **Key Dependencies**: [Major libraries and their purposes]
+- **Frontend**: Vanilla JavaScript with ES6 modules
+- **3D Engine**: Three.js 0.162.0
+- **Graphics**: WebGL (via Three.js), Canvas 2D API (minimap)
+- **Backend**: None (static site, client-side only)
+- **Database**: None (in-memory state management)
+- **Infrastructure**: Static file serving (any HTTP server)
+- **Key Dependencies**:
+  - Three.js: 3D rendering engine
+  - OrbitControls: Camera controls for 3D navigation
+  - DOMParser: XML parsing for Nmap imports
 
 ### Project Goals
 
-**TO BE DOCUMENTED** - Key objectives:
-1. [Goal 1]
-2. [Goal 2]
-3. [Goal 3]
+Key objectives:
+1. **Visualize network topologies** in an intuitive and visually appealing 3D environment
+2. **Import and analyze Nmap scans** automatically, with intelligent device type detection
+3. **Educational tool** for understanding network architecture and the OSI model
+4. **Modular architecture** for easy extension and customization
 
 ---
 
@@ -54,31 +67,50 @@ CyberSpacePrototype is [**TO BE DOCUMENTED**: Add project description, goals, an
 CyberSpacePrototype/
 ├── .git/                    # Git version control
 ├── CLAUDE.md               # This file - AI assistant guide
-├── README.md               # [TO BE ADDED] User-facing documentation
-├── [src/]                  # [TO BE ADDED] Source code
-├── [tests/]                # [TO BE ADDED] Test files
-├── [docs/]                 # [TO BE ADDED] Additional documentation
-├── [config/]               # [TO BE ADDED] Configuration files
-└── [scripts/]              # [TO BE ADDED] Build/deployment scripts
+├── README.md               # User-facing documentation
+├── public/                  # Static files served to browser
+│   └── index.html          # Main HTML page with UI and styles
+└── src/                     # JavaScript source code
+    └── js/                  # JavaScript modules
+        ├── core.js         # Core 3D engine (scene, camera, renderer)
+        ├── details.js      # Details panel with OSI analysis
+        ├── minimap.js      # 2D minimap canvas
+        ├── nmap.js         # Nmap XML import functionality
+        └── ui.js           # UI interaction handlers
 ```
 
 ### Key Directories
 
-**TO BE DOCUMENTED** - As directories are created, document their purposes:
+- **`public/`**: Static files served to the browser
+  - `index.html`: Single-page application with embedded CSS
+  - Contains all HTML structure and styling
 
-- **`src/`**: Main application source code
-  - Purpose: [Description]
-  - Key files: [List important files]
+- **`src/js/`**: JavaScript ES6 modules
+  - **`core.js`**: Main 3D engine module
+    - Scene, camera, renderer initialization
+    - Zone and node creation
+    - Raycasting for node selection
+    - Animation loop
 
-- **`tests/`**: Test suites
-  - Unit tests: [Location and patterns]
-  - Integration tests: [Location and patterns]
-  - E2E tests: [Location and patterns]
+  - **`details.js`**: Details panel module
+    - OSI model visualization
+    - Protocol classification
+    - Node information display
 
-- **`docs/`**: Additional documentation
-  - API documentation: [Location]
-  - Architecture diagrams: [Location]
-  - User guides: [Location]
+  - **`minimap.js`**: 2D minimap module
+    - Canvas-based 2D rendering
+    - Click-to-zoom navigation
+    - Draggable panel
+
+  - **`nmap.js`**: Nmap import module
+    - XML parsing
+    - Device type detection
+    - Node creation from scan results
+
+  - **`ui.js`**: UI controls module
+    - Button event handlers
+    - Label visibility toggle
+    - Node reorganization
 
 ---
 
@@ -86,41 +118,44 @@ CyberSpacePrototype/
 
 ### Prerequisites
 
-**TO BE DOCUMENTED** - List required tools and versions:
+Minimal requirements:
 
-```bash
-# Example prerequisites (update as needed):
-# - Node.js >= 18.x
-# - Python >= 3.10
-# - Docker >= 20.x
-# - Other tools...
-```
+- **Web Browser**: Modern browser with ES6 module support
+  - Chrome >= 61
+  - Firefox >= 60
+  - Safari >= 11
+  - Edge >= 16
+
+- **HTTP Server** (recommended): Any static file server
+  - Python 3: `python3 -m http.server`
+  - Node.js: `npx serve` or `npx http-server`
+  - PHP: `php -S localhost:8000`
+  - VS Code: Live Server extension
 
 ### Initial Setup
 
 ```bash
 # 1. Clone the repository
-git clone [repository-url]
+git clone <repository-url>
 cd CyberSpacePrototype
 
-# 2. Install dependencies
-# [TO BE DOCUMENTED] - Add installation commands
+# 2. No dependencies to install!
+# The project uses CDN-hosted Three.js via importmap
 
-# 3. Configure environment
-# [TO BE DOCUMENTED] - Add environment setup
+# 3. Start a local HTTP server
+python3 -m http.server 8000
+# OR
+npx serve
+# OR
+php -S localhost:8000
 
-# 4. Verify installation
-# [TO BE DOCUMENTED] - Add verification commands
+# 4. Open in browser
+# Navigate to http://localhost:8000/public/
 ```
 
 ### Environment Variables
 
-**TO BE DOCUMENTED** - Document required environment variables:
-
-```bash
-# .env.example (create as needed)
-# VAR_NAME=description
-```
+**Not required** - This is a client-side only application with no backend or configuration files needed.
 
 ---
 
@@ -128,47 +163,63 @@ cd CyberSpacePrototype
 
 ### General Principles
 
-**TO BE DOCUMENTED** - Establish coding standards:
+1. **Code Style**: Clean, readable JavaScript with consistent formatting
+   - 2-space indentation
+   - Single quotes for strings
+   - Semicolons optional but consistent
+   - Meaningful variable names
 
-1. **Code Style**: [Formatter used - e.g., Prettier, Black, etc.]
-2. **Linting**: [Linter configuration - e.g., ESLint, Pylint]
-3. **Type Safety**: [TypeScript strict mode, Python type hints, etc.]
-4. **Documentation**: [JSDoc, docstrings, inline comments policy]
+2. **Linting**: No formal linter currently configured
+   - Follow existing code patterns
+   - Keep code consistent with surrounding context
+
+3. **Type Safety**: JavaScript (no TypeScript)
+   - Use JSDoc comments for function documentation
+   - Document parameter types and return values
+
+4. **Documentation**: JSDoc for public functions
+   - Document purpose, parameters, and return values
+   - Add inline comments for complex logic
 
 ### Naming Conventions
 
-**TO BE DOCUMENTED**:
-
-- **Files**: [kebab-case, camelCase, snake_case]
-- **Functions**: [camelCase, snake_case]
-- **Classes**: [PascalCase]
-- **Constants**: [UPPER_SNAKE_CASE]
-- **Variables**: [camelCase, snake_case]
+- **Files**: kebab-case (e.g., `minimap.js`, `nmap.js`)
+- **Functions**: camelCase (e.g., `addNodes()`, `focusOnNode()`)
+- **Classes**: Not used (functional approach)
+- **Constants**: UPPER_SNAKE_CASE (e.g., `OSI`, `PROTO_TO_LAYER`)
+- **Variables**: camelCase (e.g., `nodeMap`, `zoneVisuals`)
 
 ### File Organization
 
-**TO BE DOCUMENTED**:
+Each module is self-contained:
 
 ```
-# Example component/module structure
-module-name/
-├── index.[ext]           # Main entry point
-├── [module].test.[ext]  # Tests
-├── [module].types.[ext] # Type definitions
-└── utils/               # Helper functions
+src/js/
+├── core.js         # Exports: Core, init, addZones, addNodes, etc.
+├── details.js      # Imports: Core; exports: none (event-driven)
+├── minimap.js      # Imports: Core, focusOnNode; exports: none
+├── nmap.js         # Imports: Core, addNodes; exports: none
+└── ui.js           # Imports: Core; exports: none
 ```
 
 ### Import/Export Patterns
 
-**TO BE DOCUMENTED**:
-
 ```javascript
-// Example import order (adjust for your language):
-// 1. External dependencies
+// 1. External dependencies (Three.js via CDN)
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
 // 2. Internal dependencies
-// 3. Types/interfaces
-// 4. Styles/assets
+import { Core, addNodes, focusOnNode } from './core.js';
+
+// 3. Export pattern
+export const Core = { ... };
+export function addNodes() { ... }
 ```
+
+**Module Communication**:
+- Use custom DOM events for inter-module communication
+- Example: `window.dispatchEvent(new CustomEvent('node-selected', { detail: nodeData }))`
 
 ---
 
@@ -176,40 +227,85 @@ module-name/
 
 ### Design Principles
 
-**TO BE DOCUMENTED** - Document architectural decisions:
+1. **Separation of Concerns**: Each module has a single, well-defined responsibility
+   - `core.js`: 3D rendering and scene management
+   - `details.js`: Node details display
+   - `minimap.js`: 2D navigation
+   - `nmap.js`: Data import
+   - `ui.js`: UI controls
 
-1. **Separation of Concerns**: [How code is organized]
-2. **Dependency Injection**: [If/how it's used]
-3. **State Management**: [Pattern used]
-4. **Error Handling**: [Strategy and patterns]
-5. **Logging**: [Approach and tools]
+2. **Event-Driven Communication**: Modules communicate via custom DOM events
+   - Loose coupling between modules
+   - Example: `node-selected` event from core to details
+
+3. **State Management**: Centralized in `Core.state` object
+   - Single source of truth for application state
+   - All modules import and reference `Core.state`
+
+4. **Error Handling**: Minimal, defensive programming
+   - Check for null/undefined before accessing properties
+   - Use optional chaining (`?.`) when appropriate
+
+5. **Logging**: Console-based (development only)
+   - No production logging framework
 
 ### Common Patterns
 
-**TO BE DOCUMENTED** - Key patterns used in the codebase:
-
-#### Pattern 1: [Name]
-- **Purpose**: [What it solves]
-- **When to use**: [Use cases]
+#### Pattern 1: Centralized State Object
+- **Purpose**: Single source of truth for application state
+- **When to use**: For shared data accessed by multiple modules
 - **Example**:
-```
-[Code example]
+```javascript
+export const Core = {
+  state: {
+    scene: null,
+    camera: null,
+    renderer: null,
+    data: { zones: [], nodes: [] },
+    nodeMap: new Map()
+  }
+};
 ```
 
-#### Pattern 2: [Name]
-- **Purpose**: [What it solves]
-- **When to use**: [Use cases]
+#### Pattern 2: Custom DOM Events for Inter-Module Communication
+- **Purpose**: Decouple modules while allowing communication
+- **When to use**: When one module needs to notify others of changes
 - **Example**:
+```javascript
+// In core.js - dispatch event
+window.dispatchEvent(new CustomEvent('node-selected', { detail: nodeData }));
+
+// In details.js - listen for event
+window.addEventListener('node-selected', (ev) => {
+  showDetails(ev.detail);
+});
 ```
-[Code example]
+
+#### Pattern 3: Frame Subscription for Animation
+- **Purpose**: Allow modules to hook into the animation loop
+- **When to use**: For continuous rendering (e.g., minimap redraw)
+- **Example**:
+```javascript
+// In core.js
+Core.onFrame(fn) { this.frameSubs.push(fn); }
+
+// In minimap.js
+Core.onFrame(draw); // draw() called every frame
 ```
 
 ### Anti-Patterns to Avoid
 
-**TO BE DOCUMENTED**:
+1. **Direct DOM manipulation from core.js**: Keep 3D logic separate from UI
+   - ❌ Don't: Add UI elements inside core.js
+   - ✅ Do: Use events to communicate with UI modules
 
-1. [Anti-pattern 1]: [Why to avoid and alternative]
-2. [Anti-pattern 2]: [Why to avoid and alternative]
+2. **Tight coupling between modules**: Avoid importing everything everywhere
+   - ❌ Don't: Import details.js from core.js
+   - ✅ Do: Use events for cross-module communication
+
+3. **Global state pollution**: Keep state contained in Core object
+   - ❌ Don't: Create global variables outside modules
+   - ✅ Do: Store in `Core.state` or module-local variables
 
 ---
 
@@ -429,58 +525,67 @@ Before marking work as complete:
 
 ## Common Tasks & Commands
 
-### Project Management
-
-**TO BE DOCUMENTED**:
+### Development
 
 ```bash
-# Start development server
-# [command]
+# Start development server (Python)
+python3 -m http.server 8000
+# Then open http://localhost:8000/public/
 
-# Build for production
-# [command]
+# Start development server (Node.js)
+npx serve
+# OR
+npx http-server
 
-# Run linter
-# [command]
+# Start development server (PHP)
+php -S localhost:8000
+```
 
-# Format code
-# [command]
+### Code Modifications
 
-# Run tests
-# [command]
+**Adding a new zone**:
+1. Edit `src/js/core.js`
+2. Add zone to `data.zones` array
+3. Add position to `zoneCenters` Map
 
-# Generate documentation
-# [command]
+**Adding a new node type**:
+1. Edit `src/js/core.js`
+2. Add case to `meshForType()` function
+3. Update `guessType()` in `nmap.js` if needed
+
+**Adding a new protocol mapping**:
+1. Edit `src/js/details.js`
+2. Add entry to `PROTO_TO_LAYER` object
+
+### Testing Nmap Import
+
+```bash
+# Generate a test scan
+sudo nmap -sV -oX test-scan.xml 192.168.1.0/24
+
+# Then import via UI:
+# 1. Click "Charger scan nmap"
+# 2. Select test-scan.xml
 ```
 
 ### Database Operations
 
-**TO BE DOCUMENTED** (if applicable):
-
-```bash
-# Run migrations
-# [command]
-
-# Seed database
-# [command]
-
-# Reset database
-# [command]
-```
+**Not applicable** - No database used.
 
 ### Deployment
 
-**TO BE DOCUMENTED**:
+**Static site deployment** - Copy files to any static host:
 
 ```bash
-# Deploy to staging
-# [command]
+# Deploy to GitHub Pages
+git push origin main
+# Configure GitHub Pages to serve from /public
 
-# Deploy to production
-# [command]
+# Deploy to Netlify
+# Drag and drop the entire folder
 
-# Rollback
-# [command]
+# Deploy to any web server
+rsync -av public/ user@server:/var/www/html/
 ```
 
 ---
@@ -489,26 +594,45 @@ Before marking work as complete:
 
 ### Common Issues
 
-**TO BE DOCUMENTED** - As issues arise, document solutions:
+#### Issue 1: Modules not loading (CORS error)
+**Symptom**: Browser console shows CORS errors, modules fail to load
+**Cause**: Opening `index.html` directly with `file://` protocol
+**Solution**: Use an HTTP server (see [Development Environment Setup](#development-environment-setup))
 
-#### Issue 1: [Description]
-**Symptom**: [What you see]
-**Cause**: [Why it happens]
-**Solution**: [How to fix]
+#### Issue 2: Three.js fails to load
+**Symptom**: Console error: "Failed to resolve module specifier 'three'"
+**Cause**: Browser doesn't support importmap or CDN is blocked
+**Solution**:
+- Check browser version (needs ES6 module support)
+- Check network/firewall isn't blocking unpkg.com
+- Try downloading Three.js locally if CDN is unavailable
 
-#### Issue 2: [Description]
-**Symptom**: [What you see]
-**Cause**: [Why it happens]
-**Solution**: [How to fix]
+#### Issue 3: Nmap import doesn't work
+**Symptom**: Alert shows "Imported 0 hosts"
+**Cause**: XML format incorrect or hosts are down
+**Solution**:
+- Ensure using `-oX` flag with nmap: `nmap -oX output.xml ...`
+- Check hosts have `state="up"` in XML
+- Verify XML is well-formed
+
+#### Issue 4: Performance issues with many nodes
+**Symptom**: Laggy 3D navigation, low FPS
+**Cause**: Too many nodes/polygons being rendered
+**Solution**:
+- Click "Masquer labels" to hide label sprites
+- Reduce node detail in `meshForType()` (lower segment counts)
+- Consider LOD (Level of Detail) for distant objects
+
+#### Issue 5: Minimap not appearing
+**Symptom**: Clicking "Carte" does nothing
+**Cause**: JavaScript error in minimap.js
+**Solution**: Check browser console for errors
 
 ### Getting Help
 
-**TO BE DOCUMENTED**:
-
-- **Documentation**: [Link to docs]
-- **Issue Tracker**: [Link to issues]
-- **Team Communication**: [Slack, Discord, etc.]
-- **Code Owners**: [List maintainers]
+- **Documentation**: See this file (CLAUDE.md) and README.md
+- **Issue Tracker**: GitHub Issues (if repository is public)
+- **Browser Console**: Check for JavaScript errors (F12 → Console)
 
 ---
 
@@ -550,21 +674,22 @@ This document should be updated whenever:
 
 ### Key Files Reference
 
-**TO BE DOCUMENTED**:
-
 | File | Purpose | When to Modify |
 |------|---------|----------------|
-| [file] | [purpose] | [when] |
+| `public/index.html` | Main HTML page with UI structure and CSS | Adding UI elements, changing styles |
+| `src/js/core.js` | 3D engine, scene setup, zones, nodes | Adding zones, node types, changing 3D visuals |
+| `src/js/details.js` | Details panel with OSI analysis | Changing OSI visualization, protocol mapping |
+| `src/js/minimap.js` | 2D canvas minimap | Changing minimap appearance or behavior |
+| `src/js/nmap.js` | Nmap XML import | Changing device detection logic |
+| `src/js/ui.js` | UI button handlers | Adding new UI controls |
+| `CLAUDE.md` | This file - AI assistant guide | When conventions/architecture changes |
+| `README.md` | User-facing documentation | When adding features or changing usage |
 
 ### Important Links
 
-**TO BE DOCUMENTED**:
-
-- [Production URL]
-- [Staging URL]
-- [Documentation]
-- [CI/CD Dashboard]
-- [Monitoring Dashboard]
+- **Three.js Docs**: https://threejs.org/docs/
+- **Nmap XML Output**: https://nmap.org/book/output-formats-xml-output.html
+- **OSI Model Reference**: https://en.wikipedia.org/wiki/OSI_model
 
 ---
 
@@ -573,6 +698,7 @@ This document should be updated whenever:
 | Date | Version | Changes | Author |
 |------|---------|---------|--------|
 | 2025-11-15 | 1.0.0 | Initial CLAUDE.md template created | Claude AI |
+| 2025-11-15 | 1.1.0 | Complete project setup with full documentation | Claude AI |
 
 ---
 
