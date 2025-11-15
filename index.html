@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Cyberpunk Network 3D</title>
+  <style>
+    html, body { height: 100%; margin: 0; background:#0a0d12; color:#d7e1ff; font-family: system-ui, sans-serif; overflow: hidden; }
+    #menu { position: fixed; top: 12px; left: 12px; display:flex; gap:8px; z-index: 60; flex-wrap: wrap; max-width: 600px; }
+    .chip { padding: 8px 10px; border-radius: 10px; border:1px solid #2a3242; background: rgba(10,13,18,.7); color:#d7e1ff; cursor:pointer; user-select:none; font-size: 13px; }
+    .chip:hover { background: rgba(26,32,44,.8); }
+    .chip.active { background: linear-gradient(135deg,#1f2b44,#122034); border-color:#3a8bd6 }
+    #info { position: fixed; top: 70px; left: 12px; background: rgba(10,13,18,.7); padding: 10px 12px; border: 1px solid #2a3242; border-radius: 10px; backdrop-filter: blur(6px); z-index: 59; font-size: 13px; }
+    #hover { font-size: 12px; opacity: .9; margin-top: 8px; }
+
+    /* Mini-carte */
+    #miniPanel { position: fixed; top: 150px; left: 12px; width: 360px; height: 260px; z-index: 50; display:none; }
+    #miniChrome { position:absolute; inset:0; border-radius: 12px; background: rgba(8,11,16,0.85); border:1px solid #2a3242; box-shadow: 0 10px 30px rgba(0,0,0,0.35); backdrop-filter: blur(6px); }
+    #miniHeader { position:absolute; top:0; left:0; right:0; height:34px; display:flex; align-items:center; gap:8px; padding: 0 10px; border-bottom:1px solid #223046; cursor: move; }
+    #miniTitle { font-size: 12px; color:#9ad0ff; letter-spacing: .3px; }
+    #miniClose { margin-left:auto; font-size:16px; opacity:.8; cursor:pointer; }
+    #miniClose:hover { opacity: 1; color: #ff6b6b; }
+    #miniCanvas { position:absolute; left:0; right:0; top:34px; bottom:0; border-radius: 0 0 12px 12px; background:#0a0d12; cursor: pointer; }
+
+    /* Panneau détails */
+    #details { position: fixed; top: 150px; right: 12px; width: 320px; background: rgba(8,11,16,0.85); border: 1px solid #2a3242; border-radius: 12px; padding: 16px; z-index: 50; backdrop-filter: blur(6px); display: none; }
+    #details h3 { margin: 0 0 8px 0; color: #9ad0ff; font-size: 16px; }
+    #details p { margin: 4px 0; font-size: 13px; opacity: 0.9; }
+    .tag { display: inline-block; padding: 3px 8px; margin: 2px; background: rgba(58,139,214,0.2); border: 1px solid rgba(58,139,214,0.4); border-radius: 4px; font-size: 11px; color: #9ad0ff; }
+    #d-osi { display: grid; grid-template-columns: auto 1fr; gap: 4px; margin: 12px 0; }
+    .layer { font-size: 11px; opacity: 0.8; padding: 4px 0; }
+    .bar { height: 20px; background: rgba(14,23,38,0.5); border-radius: 4px; overflow: hidden; }
+    .fill { height: 100%; transition: all 0.3s; }
+  </style>
+</head>
+<body>
+  <div id="menu">
+    <div class="chip" id="btnMap">Carte</div>
+    <div class="chip" id="btnFit">Recentrer</div>
+    <div class="chip" id="btnToggleLabels">Masquer labels</div>
+    <div class="chip" id="btnSpread">Écarter</div>
+    <div class="chip" id="btnLoadXml">Charger scan nmap</div>
+    <div class="chip" id="btnReplace">Mode remplacement</div>
+  </div>
+  <div id="info">
+    <strong>Cyberpunk Network</strong><br>
+    Souris: pivoter/zoomer • Clic: sélectionner • Mini-carte: cliquer pour zoomer
+    <div id="hover"></div>
+  </div>
+
+  <!-- Mini-carte -->
+  <div id="miniPanel">
+    <div id="miniChrome"></div>
+    <div id="miniHeader">
+      <span id="miniTitle">Carte du réseau (2D)</span>
+      <span id="miniClose">✕</span>
+    </div>
+    <canvas id="miniCanvas"></canvas>
+  </div>
+
+  <!-- Panneau détails -->
+  <div id="details">
+    <h3 id="d-title">Node</h3>
+    <p id="d-sub"></p>
+    <div id="d-osi"></div>
+    <div id="d-protos"></div>
+  </div>
+
+  <input type="file" id="fileInput" accept=".xml" style="display:none">
+
+  <script async src="https://unpkg.com/es-module-shims@1.6.3/dist/es-module-shims.js"></script>
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.162.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.162.0/examples/jsm/"
+    }
+  }
+  </script>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+    // ========= CORE =========
+    const Core = {
+      state: {
+        scene: null,
+        camera: null,
+        renderer: null,
+        controls: null,
+        groups: {
+          zones: new THREE.Group(),
+          nodes: new THREE.Group(),
+          links: new THREE.Group(),
+          traffic: new THREE.Group()
+        },
+        data: {
+          zones: [
+            { id:'core',      label:'Core/DMZ',   color:0x00d1ff },
+            { id:'lan-home',  label:'LAN Maison', color:0x1f6feb },
+            { id:'lan-iot',   label:'IoT',        color:0x08b1ff },
+            { id:'lan-guest', label:'Invités',    color:0x5e86ff }
+          ],
+          nodes: [
+            { id:'router-1',  label:'Routeur',    type:'router',  ip:'192.168.1.1',  zone:'core' },
+            { id:'pc-1',      label:'PC Bureau',  type:'pc',      ip:'192.168.1.12', zone:'lan-home' },
+            { id:'nas-1',     label:'NAS',        type:'nas',     ip:'192.168.1.20', zone:'lan-home' },
+            { id:'printer-1', label:'Imprimante', type:'printer', ip:'192.168.1.50', zone:'lan-home' },
+            { id:'lamp-1',    label:'Lampe',      type:'lamp',    ip:'192.168.1.81', zone:'lan-iot' }
+          ]
+        },
+        zoneCenters: new Map([
+          ['core',      new THREE.Vector3(  0, 0,   0)],
+          ['lan-home',  new THREE.Vector3(-10, 0, -10)],
+          ['lan-iot',   new THREE.Vector3( 12, 0,  -8)],
+          ['lan-guest', new THREE.Vector3( -2, 0,  12)]
+        ]),
+        zoneVisuals: new Map(),
+        nodeMap: new Map(),
+        labelsEnabled: true,
+      },
+      frameSubs: [],
+      onFrame(fn) { this.frameSubs.push(fn); }
+    };
+
+    function makeLabel(text) {
+      const canvas = document.createElement('canvas');
+      const size = 256;
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#00000066';
+      ctx.fillRect(0, size * 0.56, size, size * 0.44);
+      ctx.font = '28px system-ui';
+      ctx.fillStyle = '#cfe8ff';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(text, size / 2, size * 0.78);
+      const tex = new THREE.CanvasTexture(canvas);
+      const mat = new THREE.SpriteMaterial({ map: tex, transparent: true });
+      const spr = new THREE.Sprite(mat);
+      spr.scale.set(2.6, 2.6, 1);
+      spr.material.depthTest = false;
+      spr.renderOrder = 999;
+      return spr;
+    }
+
+    function meshForType(type) {
+      const geoBall = new THREE.SphereGeometry(0.7, 24, 20);
+      const geoBox = new THREE.BoxGeometry(1.2, 0.7, 1.2);
+      const geoCyl = new THREE.CylinderGeometry(0.5, 0.5, 1.2, 16);
+      const mat = new THREE.MeshStandardMaterial({ color: 0x8fd1ff, metalness: 0.6, roughness: 0.2 });
+      switch (type) {
+        case 'router': return new THREE.Mesh(geoBox, mat.clone());
+        case 'printer': return new THREE.Mesh(geoCyl, mat.clone());
+        case 'nas': return new THREE.Mesh(new THREE.BoxGeometry(0.9, 1.4, 0.9), mat.clone());
+        default: return new THREE.Mesh(geoBall, mat.clone());
+      }
+    }
+
+    function addZones() {
+      const { zones } = Core.state.data;
+      const { zoneCenters, zoneVisuals } = Core.state;
+      const g = Core.state.groups.zones;
+      
+      zones.forEach(z => {
+        const center = zoneCenters.get(z.id) || new THREE.Vector3();
+        const members = Core.state.data.nodes.filter(n => n.zone === z.id);
+        const radius = Math.max(3.2, 2 + members.length * 0.9);
+        
+        const base = new THREE.Mesh(
+          new THREE.CylinderGeometry(radius, radius, 0.08, 64),
+          new THREE.MeshPhysicalMaterial({ color: z.color, transparent: true, opacity: 0.06 })
+        );
+        base.position.copy(center);
+        
+        const wall = new THREE.Mesh(
+          new THREE.CylinderGeometry(radius * 1.03, radius * 1.03, 2.2, 48, 1, true),
+          new THREE.MeshBasicMaterial({ color: z.color, transparent: true, opacity: 0.14, side: THREE.DoubleSide })
+        );
+        wall.position.copy(center).add(new THREE.Vector3(0, 1.15, 0));
+        
+        const label = makeLabel(z.label);
+        label.position.copy(center).add(new THREE.Vector3(0, 1.6, 0));
+        
+        const grp = new THREE.Group();
+        grp.add(base, wall, label);
+        grp.userData = { center, radius, pulse: 0 };
+        g.add(grp);
+        zoneVisuals.set(z.id, grp);
+      });
+    }
+
+    function addNodes() {
+      const nodesGroup = Core.state.groups.nodes;
+      Core.state.nodeMap.clear();
+      nodesGroup.clear();
+      
+      const nodes = Core.state.data.nodes;
+      nodes.forEach((n) => {
+        const center = Core.state.zoneVisuals.get(n.zone)?.userData.center || new THREE.Vector3();
+        const siblings = nodes.filter(s => s.zone === n.zone);
+        const idx = siblings.findIndex(s => s.id === n.id);
+        const radius = Math.max(1.4, 0.9 * Math.sqrt(Math.max(1, siblings.length)));
+        const angle = (idx / Math.max(1, siblings.length)) * Math.PI * 2;
+        const pos = new THREE.Vector3(
+          Math.cos(angle) * radius,
+          THREE.MathUtils.randFloat(0, 0.8),
+          Math.sin(angle) * radius
+        ).add(center);
+        
+        const m = meshForType(n.type);
+        m.position.copy(pos);
+        m.userData = { ...n, selected: false };
+        
+        const label = makeLabel(n.label);
+        label.position.set(0, 1.2, 0);
+        m.add(label);
+        
+        nodesGroup.add(m);
+        Core.state.nodeMap.set(n.id, m);
+      });
+    }
+
+    function focusOnNode(id) {
+      const obj = Core.state.nodeMap.get(id);
+      if (!obj) return;
+      
+      const target = obj.position.clone();
+      const dir = new THREE.Vector3(0.7, 0.5, 1).normalize();
+      const dist = 6;
+      const dest = target.clone().addScaledVector(dir, dist);
+      const startPos = Core.state.camera.position.clone();
+      const startTarget = Core.state.controls.target.clone();
+      
+      let t = 0;
+      const dur = 0.8;
+      (function tween() {
+        t = Math.min(1, t + 1 / 60 / dur);
+        Core.state.camera.position.lerpVectors(startPos, dest, t);
+        Core.state.controls.target.lerpVectors(startTarget, target, t);
+        if (t < 1) requestAnimationFrame(tween);
+      })();
+    }
+
+    function init() {
+      const scene = Core.state.scene = new THREE.Scene();
+      scene.fog = new THREE.FogExp2(0x06080c, 0.03);
+      
+      const camera = Core.state.camera = new THREE.PerspectiveCamera(70, innerWidth / innerHeight, 0.1, 2000);
+      camera.position.set(0, 10, 26);
+      
+      const renderer = Core.state.renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setPixelRatio(devicePixelRatio);
+      renderer.setSize(innerWidth, innerHeight);
+      renderer.setClearColor(0x0a0d12);
+      document.body.appendChild(renderer.domElement);
+      
+      const controls = Core.state.controls = new OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true;
+      
+      scene.add(new THREE.HemisphereLight(0x7aa6ff, 0x0b0d12, 0.9));
+      const key = new THREE.SpotLight(0x6ee7ff, 1.2, 120, Math.PI / 6, 0.3, 1.0);
+      key.position.set(12, 18, 10);
+      key.castShadow = true;
+      scene.add(key);
+      
+      const grid = new THREE.GridHelper(160, 160, 0x164a8a, 0x102942);
+      grid.material.opacity = 0.25;
+      grid.material.transparent = true;
+      scene.add(grid);
+      
+      scene.add(Core.state.groups.zones, Core.state.groups.nodes, Core.state.groups.links, Core.state.groups.traffic);
+      
+      addZones();
+      addNodes();
+      
+      window.addEventListener('resize', () => {
+        camera.aspect = innerWidth / innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(innerWidth, innerHeight);
+      });
+      
+      animate();
+    }
+
+    function animate() {
+      function loop() {
+        Core.state.controls.update();
+        Core.frameSubs.forEach(fn => fn());
+        Core.state.renderer.render(Core.state.scene, Core.state.camera);
+        requestAnimationFrame(loop);
+      }
+      loop();
+    }
+
+    // Raycasting
+    const raycaster = new THREE.Raycaster();
+    const mouse = new THREE.Vector2();
+
+    window.addEventListener('pointermove', (e) => {
+      const rect = Core.state.renderer.domElement.getBoundingClientRect();
+      mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+      mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+    });
+
+    window.addEventListener('click', () => {
+      raycaster.setFromCamera(mouse, Core.state.camera);
+      const hit = raycaster.intersectObjects(Core.state.groups.nodes.children, false)[0];
+      if (hit) {
+        const ud = hit.object.userData || {};
+        window.dispatchEvent(new CustomEvent('node-selected', { detail: ud }));
+      }
+    });
+
+    // ========= UI =========
+    document.getElementById('btnFit').onclick = () => {
+      Core.state.controls.target.set(0, 0, 0);
+    };
+
+    document.getElementById('btnToggleLabels').onclick = () => {
+      Core.state.labelsEnabled = !Core.state.labelsEnabled;
+      document.getElementById('btnToggleLabels').textContent = Core.state.labelsEnabled ? 'Masquer labels' : 'Afficher labels';
+      Core.state.groups.nodes.children.forEach(m => {
+        const s = m.children.find(c => c.type === 'Sprite');
+        if (s) s.visible = Core.state.labelsEnabled;
+      });
+    };
+
+    document.getElementById('btnSpread').onclick = () => {
+      const { data, zoneVisuals, nodeMap } = Core.state;
+      data.zones.forEach(z => {
+        const members = data.nodes.filter(n => n.zone === z.id);
+        const center = zoneVisuals.get(z.id).userData.center;
+        const radius = Math.max(2, 1.2 * Math.sqrt(Math.max(1, members.length))) + 1.6;
+        members.forEach((n, i) => {
+          const a = (i / members.length) * Math.PI * 2;
+          const p = center.clone().add({x: Math.cos(a) * radius, y: 0.15, z: Math.sin(a) * radius});
+          const m = nodeMap.get(n.id);
+          if (m) m.position.set(p.x, p.y, p.z);
+        });
+      });
+    };
+
+    // ========= MINIMAP =========
+    const panel = document.getElementById('miniPanel');
+    const cvs = document.getElementById('miniCanvas');
+    const ctx = cvs.getContext('2d');
+    const header = document.getElementById('miniHeader');
+    const close = document.getElementById('miniClose');
+
+    function resize() {
+      const r = panel.getBoundingClientRect();
+      const dpr = Math.max(1, devicePixelRatio || 1);
+      cvs.width = r.width * dpr;
+      cvs.height = (r.height - 34) * dpr;
+      cvs.style.width = r.width + 'px';
+      cvs.style.height = (r.height - 34) + 'px';
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+
+    function open() {
+      if (getComputedStyle(panel).display === 'none') {
+        panel.style.display = 'block';
+        resize();
+      }
+    }
+
+    document.getElementById('btnMap').onclick = open;
+    close.onclick = () => panel.style.display = 'none';
+    window.addEventListener('resize', () => {
+      if (panel.style.display !== 'none') resize();
+    });
+
+    let drag = false, offX = 0, offY = 0;
+    header.onmousedown = e => {
+      drag = true;
+      offX = e.clientX - panel.offsetLeft;
+      offY = e.clientY - panel.offsetTop;
+    };
+    window.onmousemove = e => {
+      if (!drag) return;
+      panel.style.left = (e.clientX - offX) + 'px';
+      panel.style.top = (e.clientY - offY) + 'px';
+      resize();
+    };
+    window.onmouseup = () => drag = false;
+
+    function bounds() {
+      const zV = Core.state.zoneVisuals;
+      let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
+      zV.forEach(g => {
+        const c = g.userData.center;
+        const r = g.userData.radius * 1.6;
+        minX = Math.min(minX, c.x - r);
+        maxX = Math.max(maxX, c.x + r);
+        minZ = Math.min(minZ, c.z - r);
+        maxZ = Math.max(maxZ, c.z + r);
+      });
+      return { minX, maxX, minZ, maxZ };
+    }
+
+    function project(x, z, rect, b) {
+      const margin = 12;
+      const w = rect.width - 2 * margin;
+      const h = rect.height - 34 - 2 * margin;
+      const sx = (x - b.minX) / (b.maxX - b.minX);
+      const sz = (z - b.minZ) / (b.maxZ - b.minZ);
+      return { x: margin + sx * w, y: 34 + margin + sz * h };
+    }
+
+    function draw() {
+      if (panel.style.display === 'none') return;
+      const rect = panel.getBoundingClientRect();
+      const b = bounds();
+      ctx.clearRect(0, 0, rect.width, rect.height);
+      
+      Core.state.data.zones.forEach(z => {
+        const g = Core.state.zoneVisuals.get(z.id);
+        const c = project(g.userData.center.x, g.userData.center.z, rect, b);
+        const r = g.userData.radius * (rect.width / (Math.max(1, (b.maxX - b.minX)) * 2.2));
+        ctx.beginPath();
+        ctx.arc(c.x, c.y, r, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(${(z.color >> 16) & 255},${(z.color >> 8) & 255},${z.color & 255},0.08)`;
+        ctx.fill();
+        ctx.strokeStyle = `rgba(${(z.color >> 16) & 255},${(z.color >> 8) & 255},${z.color & 255},0.45)`;
+        ctx.stroke();
+        ctx.fillStyle = '#9ad0ff';
+        ctx.font = '12px system-ui';
+        ctx.textAlign = 'center';
+        ctx.fillText(z.label, c.x, c.y - r - 6);
+      });
+      
+      Core.state.data.nodes.forEach(n => {
+        const m = Core.state.nodeMap.get(n.id);
+        if (!m) return;
+        const p = project(m.position.x, m.position.z, rect, b);
+        ctx.fillStyle = '#cfe8ff';
+        ctx.fillRect(p.x - 2, p.y - 2, 4, 4);
+      });
+    }
+
+    Core.onFrame(draw);
+
+    cvs.addEventListener('click', (e) => {
+      const rect = panel.getBoundingClientRect();
+      const b = bounds();
+      let best = null, bd = 1e9;
+      Core.state.data.nodes.forEach(n => {
+        const m = Core.state.nodeMap.get(n.id);
+        if (!m) return;
+        const p = project(m.position.x, m.position.z, rect, b);
+        const dx = p.x - (e.clientX - rect.left);
+        const dy = p.y - (e.clientY - rect.top);
+        const d = dx * dx + dy * dy;
+        if (d < bd) {
+          bd = d;
+          best = n.id;
+        }
+      });
+      if (best && bd < 30 * 30) focusOnNode(best);
+    });
+
+    // ========= NMAP =========
+    function guessType(ports) {
+      const ids = new Set(ports.map(p => +p.portid));
+      if (ids.has(515) || ids.has(9100)) return 'printer';
+      if (ids.has(445) || ids.has(139) || ids.has(2049)) return 'nas';
+      if (ids.has(22)) return 'router';
+      if (ids.has(80) || ids.has(443) || ids.has(8080)) return 'pc';
+      return 'pc';
+    }
+
+    function importXml(txt, { replace = false, ipPrefix = '192.168.1.' } = {}) {
+      const doc = new DOMParser().parseFromString(txt, 'application/xml');
+      const hosts = [...doc.querySelectorAll('host')];
+      const added = [];
+      
+      if (replace) {
+        Core.state.data.nodes.length = 0;
+        Core.state.nodeMap.clear();
+        Core.state.groups.nodes.clear();
+      }
+      
+      hosts.forEach(h => {
+        const addr = h.querySelector('address[type="ipv4"], address[type="ipv6"], address');
+        if (!addr) return;
+        const ip = addr.getAttribute('addr');
+        const st = h.querySelector('status')?.getAttribute('state') || 'unknown';
+        if (st !== 'up') return;
+        const name = h.querySelector('hostnames hostname')?.getAttribute('name');
+        const ports = [...h.querySelectorAll('port')].map(p => ({
+          portid: p.getAttribute('portid'),
+          protocol: p.getAttribute('protocol') || 'tcp',
+          state: p.querySelector('state')?.getAttribute('state') || '',
+          service: p.querySelector('service')?.getAttribute('name') || ''
+        }));
+        const type = guessType(ports);
+        const id = `nmap-${ip.replace(/[:\.]/g, '-')}`;
+        if (Core.state.data.nodes.some(n => n.id === id)) return;
+        const zone = ip?.startsWith(ipPrefix) ? 'lan-home' : 'core';
+        const node = { id, label: name || ip, type, ip, zone, nmap: { ports } };
+        Core.state.data.nodes.push(node);
+        added.push(node);
+      });
+      
+      addNodes();
+      return added;
+    }
+
+    const fileInput = document.getElementById('fileInput');
+    document.getElementById('btnLoadXml').onclick = () => fileInput.click();
+    document.getElementById('btnReplace').onclick = (e) => e.currentTarget.classList.toggle('active');
+
+    fileInput.addEventListener('change', async (ev) => {
+      const f = ev.target.files[0];
+      if (!f) return;
+      const txt = await f.text();
+      const replace = document.getElementById('btnReplace').classList.contains('active');
+      const nodes = importXml(txt, { replace });
+      alert(`Importé ${nodes.length} hôtes.`);
+      fileInput.value = '';
+    });
+
+    // ========= DETAILS =========
+    const OSI = [null,
+      { id: 1, name: 'Physique' },
+      { id: 2, name: 'Liaison' },
+      { id: 3, name: 'Réseau' },
+      { id: 4, name: 'Transport' },
+      { id: 5, name: 'Session' },
+      { id: 6, name: 'Présentation' },
+      { id: 7, name: 'Application' }
+    ];
+    
+    const PROTO_TO_LAYER = {
+      http: 7, https: 7, ssh: 7, ftp: 7, telnet: 7, smtp: 7, pop3: 7, imap: 7, dns: 7, mdns: 7,
+      ipp: 7, printer: 7, jetdirect: 7, smb: 7, samba: 7, nfs: 7, upnp: 7, rdp: 7, vnc: 7, snmp: 7, mqtt: 7, coap: 7, ntp: 7, rpcbind: 7,
+      tcp: 4, udp: 4, icmp: 3
+    };
+    
+    const LAYER_COLOR = { 7: '#4db1ff', 6: '#6aa7ff', 5: '#7b9aff', 4: '#51d1b8', 3: '#c2d15a', 2: '#f7a24a', 1: '#ef6a6a' };
+
+    const detailsEl = {
+      panel: document.getElementById('details'),
+      title: document.getElementById('d-title'),
+      sub: document.getElementById('d-sub'),
+      osi: document.getElementById('d-osi'),
+      protos: document.getElementById('d-protos')
+    };
+
+    function groupProtocolsByLayer(ports) {
+      const layers = new Map();
+      const ensure = (l) => (layers.has(l) ? layers.get(l) : layers.set(l, new Set()).get(l));
+      (ports || []).forEach(p => {
+        const svc = (p.service || '').toLowerCase();
+        const proto = (p.protocol || '').toLowerCase();
+        if (proto === 'tcp') ensure(4).add('TCP');
+        if (proto === 'udp') ensure(4).add('UDP');
+        [svc, proto].filter(Boolean).forEach(name => {
+          const L = PROTO_TO_LAYER[name];
+          if (L) ensure(L).add(name.toUpperCase());
+        });
+      });
+      return layers;
+    }
+
+    function renderOSI(layers) {
+      detailsEl.osi.innerHTML = '';
+      for (let i = 7; i >= 1; i--) {
+        const label = document.createElement('div');
+        label.className = 'layer';
+        label.textContent = `${i}. ${OSI[i].name}`;
+        const bar = document.createElement('div');
+        bar.className = 'bar';
+        const fill = document.createElement('div');
+        fill.className = 'fill';
+        if (layers.has(i)) {
+          fill.style.background = LAYER_COLOR[i];
+          fill.style.opacity = 0.9;
+        } else {
+          fill.style.background = '#0e1726';
+          fill.style.opacity = 0.35;
+        }
+        bar.appendChild(fill);
+        detailsEl.osi.appendChild(label);
+        detailsEl.osi.appendChild(bar);
+      }
+    }
+
+    function renderProtocols(layers) {
+      detailsEl.protos.innerHTML = '';
+      const entries = [...layers.entries()].sort((a, b) => b[0] - a[0]);
+      if (entries.length === 0) {
+        detailsEl.protos.innerHTML = '<em>Aucun service détecté pour cet hôte.</em>';
+        return;
+      }
+      for (const [layer, set] of entries) {
+        const title = document.createElement('div');
+        title.style.marginTop = '6px';
+        title.style.opacity = '.85';
+        title.textContent = `Couche ${layer} — ${OSI[layer].name}`;
+        detailsEl.protos.appendChild(title);
+        [...set].sort().forEach(name => {
+          const tag = document.createElement('span');
+          tag.className = 'tag';
+          tag.textContent = name;
+          detailsEl.protos.appendChild(tag);
+        });
+      }
+    }
+
+    function showDetails(node) {
+      detailsEl.title.textContent = node.label || node.ip || node.id;
+      detailsEl.sub.textContent = `${node.ip || ''}  ${node.type ? ('• ' + node.type) : ''}`;
+      const layers = groupProtocolsByLayer(node.nmap?.ports || []);
+      renderOSI(layers);
+      renderProtocols(layers);
+      detailsEl.panel.style.display = 'block';
+    }
+
+    window.addEventListener('node-selected', (ev) => {
+      const node = ev.detail;
+      if (node) showDetails(node);
+    });
+
+    // Init
+    init();
+  </script>
+</body>
+</html>
